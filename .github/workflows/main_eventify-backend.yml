@@ -13,7 +13,7 @@ permissions:
 
 env:
   APP_NAME: eventify-backend
-  IMAGE_NAME: ghcr.io/SoftwareArquitecture/eventify-backend
+  IMAGE_NAME: ghcr.io/softwarearquitecture/eventify-backend
 
 jobs:
   build-and-push:
@@ -57,3 +57,4 @@ jobs:
         with:
           app-name: ${{ env.APP_NAME }}
           images: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
