@@ -37,7 +37,7 @@ public class RequestAuthorizationMiddleware(RequestDelegate next, ILogger<Reques
 
         var userId = await tokenService.ValidateToken(token);
 
-        if (userId is null) throw new new AuthenticationException("Invalid token");
+        if (userId is null) throw new AuthenticationException("Invalid token");
 
         var getUserByIdQuery = new GetUserByIdQuery(userId.Value);
 
