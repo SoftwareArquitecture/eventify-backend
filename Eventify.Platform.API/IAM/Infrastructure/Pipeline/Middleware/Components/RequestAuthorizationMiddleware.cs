@@ -1,8 +1,16 @@
+El error `System.NullReferenceException` que estás viendo es causado por la línea que intenta acceder al `.Metadata` del *Endpoint* sin verificar si el *Endpoint* es nulo. Esto es común cuando se accede a rutas que no son endpoints MVC (como la ruta raíz `/` o archivos estáticos de Swagger).
+
+Aquí tienes el código completo de `RequestAuthorizationMiddleware.cs` con la corrección aplicada, siguiendo la lógica que permite que las rutas no definidas (como `/swagger` o `/`) se salten el proceso de autenticación.
+
+El cambio clave es en las **líneas 30-31** para primero capturar el endpoint y luego verificar que no sea nulo antes de intentar acceder a sus propiedades.
+
+```csharp
 using System.Security.Authentication;
 using Eventify.Platform.API.IAM.Application.Internal.OutboundServices;
 using Eventify.Platform.API.IAM.Domain.Model.Queries;
 using Eventify.Platform.API.IAM.Domain.Services;
 using Eventify.Platform.API.IAM.Infrastructure.Pipeline.Middleware.Attributes;
+using Microsoft.AspNetCore.Http.Extensions; // Necesario para GetEndpoint()
 
 namespace Eventify.Platform.API.IAM.Infrastructure.Pipeline.Middleware.Components;
 
@@ -27,17 +35,22 @@ public class RequestAuthorizationMiddleware(RequestDelegate next, ILogger<Reques
         ITokenService tokenService)
     {
         _logger.LogInformation("Entering InvokeAsync");
-        // skip authorization if endpoint is decorated with [AllowAnonymous] attribute
-        var allowAnonymous = context.Request.HttpContext.GetEndpoint()!.Metadata
+        
+        var endpoint = context.Request.HttpContext.GetEndpoint();
+        
+        // skip authorization if endpoint is null (e.g., static files, root path) 
+        // OR if it is explicitly decorated with [AllowAnonymous] attribute.
+        var allowAnonymous = endpoint != null && endpoint.Metadata
             .Any(m => m.GetType() == typeof(AllowAnonymousAttribute));
-        _logger.LogInformation("Allow Anonymous is {AllowAnonymous}", allowAnonymous);
-        if (allowAnonymous)
+        
+        if (endpoint == null || allowAnonymous)
         {
             _logger.LogInformation("Skipping authorization");
             // [AllowAnonymous] attribute is set, so skip authorization
             await next(context);
             return;
         }
+
         _logger.LogInformation("Entering authorization");
         // get token from request header
         var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
@@ -65,3 +78,4 @@ public class RequestAuthorizationMiddleware(RequestDelegate next, ILogger<Reques
         await next(context);
     }
 }
+```
